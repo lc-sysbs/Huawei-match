@@ -1,0 +1,205 @@
+# -*- coding: utf-8 -*-
+
+import pandas as pd
+import numpy as np
+
+## 导入数据
+path = 'C://Users//Administrator//Desktop//2020华为财务精英挑战赛校内赛赛题（刷新）//'
+f = open(path+'data1.csv')
+data0 = pd.read_csv(f)
+data0 = data0.set_index('季度')
+
+## 北美区域
+def beimei(data0):
+    # 2G市场
+    list_2G = []
+    data_2G = data0['2G北美规模']
+    for i in range(4):
+        yoy = data_2G[-4+i]/data_2G[-8+i]-1
+        list_2G.append(data_2G[-4+i]*(1+yoy))
+        
+    # 3G市场
+    list_3G = []
+    data_3G = data0['3G北美规模']
+    for i in range(4):
+        yoy = data_2G[-16+i]/data_2G[-20+i]-1
+        list_3G.append(data_3G[-4+i]*(1+yoy))
+        
+    # 4G市场
+    list_4G = []
+    data_4G = data0['4G北美规模']
+    yoy1 = data_2G['Q109':'Q409'].mean()/data_2G['Q108':'Q408'].mean()-1
+    yoy2 = data_3G['Q112':'Q412'].mean()/data_3G['Q111':'Q411'].mean()-1
+    yoy = (yoy1+yoy2)/2
+    for i in range(4):
+        list_4G.append(data_4G[-4+i]*(1+yoy*1.1)) # 20年补跌+疫情，整体小幅加速
+        
+    # 5G市场 
+    list_5G = []
+    data_5G = data0['5G北美规模']
+    for i in range(4):
+        yoy1 = data_3G[-44+i]/data_3G[-45+i]-1
+        yoy2 = data_4G[-32+i]/data_4G[-33+i]-1
+        yoy = (yoy1+yoy2)/2
+        if i == 0:
+            list_5G.append(data_5G[-1]*(1+yoy*0.8))
+        else:
+            list_5G.append(list_5G[i-1]*(1+yoy*0.8))   
+            
+    # 整体市场
+    list_add = []
+    for i in range(4):
+        list_add.append(list_2G[i]+list_3G[i]+list_4G[i]+list_5G[i])
+        
+    return list_2G,list_3G,list_4G,list_add,list_5G
+
+## 亚太区域
+def yatai(data0):
+    # 2G市场
+    list_2G = []
+    data_2G = data0['2G亚太规模']
+    for i in range(4):
+        yoy = data_2G[-4+i]/data_2G[-8+i]-1
+        list_2G.append(data_2G[-4+i]*(1+yoy))
+        
+    # 3G市场
+    list_3G = []
+    data_3G = data0['3G亚太规模']
+    for i in range(4):
+        yoy = data_2G[-20+i]/data_2G[-24+i]-1
+        if i == 3:
+            yoy = yoy*1.5 # 异常点调整，3G市场在20Q4突然环比大幅上升可能性极小
+        list_3G.append(data_3G[-4+i]*(1+yoy))
+        
+    # 4G市场
+    list_4G = []
+    data_4G = data0['4G亚太规模']
+    yoy1 = data_2G['Q309':'Q210'].mean()/data_2G['Q308':'Q209'].mean()-1
+    yoy2 = data_3G['Q112':'Q412'].mean()/data_3G['Q111':'Q411'].mean()-1
+    yoy = (yoy1+yoy2)/2*0.8 # 疫情延缓
+    for i in range(4):
+        list_4G.append(data_4G[-4+i]*(1+yoy)) 
+        
+    # 5G市场 
+    list_5G = []
+    data_5G = data0['5G亚太规模']
+    for i in range(4):
+        yoy1 = data_3G[-42+i]/data_3G[-43+i]-1
+        yoy2 = data_4G[-28+i]/data_4G[-29+i]-1
+        yoy = (yoy1+yoy2)/2*0.8 # 疫情延缓
+        if i == 0:
+            list_5G.append(data_5G[-1]*(1+yoy))
+        else:
+            list_5G.append(list_5G[i-1]*(1+yoy))      
+        
+    # 整体市场
+    list_add = []
+    for i in range(4):
+        list_add.append(list_2G[i]+list_3G[i]+list_4G[i]+list_5G[i])
+        
+    return list_2G,list_3G,list_4G,list_add,list_5G
+    
+## EMEA区域
+def EMEA(data0):
+    # 2G市场
+    list_2G = []
+    data_2G = data0['2G EMEA规模']
+    for i in range(4):
+        yoy = data_2G[-4+i]/data_2G[-8+i]-1
+        if i == 3:
+            yoy = yoy-0.1 # 异常点调整，2G市场在20Q4突然环比大幅上升可能性极小
+        list_2G.append(data_2G[-4+i]*(1+yoy))
+        
+    # 3G市场
+    list_3G = []
+    data_3G = data0['3G EMEA规模']
+    for i in range(4):
+        yoy = data_2G[-28+i]/data_2G[-32+i]-1
+        if i == 3:
+            yoy = yoy-0.2 # 异常点调整，3G市场在20Q4突然环比大幅上升可能性极小
+        list_3G.append(data_3G[-4+i]*(1+yoy))
+        
+    # 4G市场
+    list_4G = []
+    data_4G = data0['4G EMEA规模']
+    for i in range(4):
+        yoy = data_3G[-40+i]/data_3G[-44+i]-1
+        yoy = yoy*0.8 # 疫情延缓
+        list_4G.append(data_4G[-4+i]*(1+yoy))
+        
+    # 5G市场
+    list_5G = []
+    data_5G = data0['5G EMEA规模']
+    for i in range(4):
+        yoy = (data_4G[-32+i]/data_4G[-33+i]-1)*0.8
+        if i == 0:
+            list_5G.append(data_5G[-1]*(1+yoy))
+        else:
+            list_5G.append(list_5G[i-1]*(1+yoy))
+        
+    # 整体市场
+    list_add = []
+    for i in range(4):
+        list_add.append(list_2G[i]+list_3G[i]+list_4G[i]+list_5G[i])
+    
+    return list_2G,list_3G,list_4G,list_add,list_5G
+    
+## CALA区域
+def CALA(data0):
+    # 2G市场
+    list_2G = []
+    data_2G = data0['2G CALA规模']
+    for i in range(4):
+        yoy = data_2G[-4+i]/data_2G[-8+i]-1
+        list_2G.append(data_2G[-4+i]*(1+yoy))
+        
+    # 3G市场
+    list_3G = []
+    data_3G = data0['3G CALA规模']
+    for i in range(4):
+        yoy = data_2G[-32+i]/data_2G[-36+i]-1
+        list_3G.append(data_3G[-4+i]*(1+yoy))
+        
+    # 4G市场
+    list_4G = []
+    data_4G = data0['4G CALA规模']
+    for i in range(4):
+        yoy = data_3G[-28+i]/data_3G[-32+i]-1
+        yoy = yoy*0.8 # 疫情延缓
+        list_4G.append(data_4G[-4+i]*(1+yoy))
+        
+    # 5G市场
+    list_5G = []
+    data_5G = data0['5G CALA规模']
+    for i in range(4):
+        yoy = (data_4G[-28+i]/data_4G[-29+i]-1)
+        yoy = yoy*0.8 # 疫情延缓
+        if i == 0:
+            list_5G.append(data_5G[-1]*(1+yoy))
+        else:
+            list_5G.append(list_5G[i-1]*(1+yoy))
+    
+    # 整体市场
+    list_add = []
+    for i in range(4):
+        list_add.append(list_2G[i]+list_3G[i]+list_4G[i]+list_5G[i])
+        
+    return list_2G,list_3G,list_4G,list_add,list_5G
+
+## 运行模型并输出结果至CSV文件
+Index = ['Q120','Q220','Q320','Q420']
+
+Beimei = np.array(beimei(data0)).T
+df_Beimei = pd.DataFrame(Beimei,index=Index,columns=data0.columns[:5])
+
+Yatai = np.array(yatai(data0)).T
+df_Yatai = pd.DataFrame(Yatai,index=Index,columns=data0.columns[10:15])
+
+emea = np.array(EMEA(data0)).T
+df_emea = pd.DataFrame(emea,index=Index,columns=data0.columns[5:10])
+
+cala = np.array(CALA(data0)).T
+df_cala = pd.DataFrame(cala,index=Index,columns=data0.columns[-5:])
+
+df = pd.concat([df_Beimei,df_emea,df_Yatai,df_cala],axis=1)
+df.to_csv(path+"model_2_result.csv",encoding='utf_8_sig')
