@@ -1,0 +1,213 @@
+# -*- coding: utf-8 -*-
+
+import pandas as pd
+import numpy as np
+from keras.models import Sequential
+from keras.layers import LSTM, Dense, Activation, Dropout
+import matplotlib.pylab as plt
+
+# 导入数据
+path = 'C://Users//Administrator//Desktop//2020华为财务精英挑战赛校内赛赛题（刷新）//part 2//'
+f = open(path+'data1.csv')
+data0 = pd.read_csv(f)
+data0 = data0.set_index('季度')
+
+## 模型一：LSTM预测
+## 构建模型
+def LSTM_model(data_i,sequence_length=4,dropout=0.2):
+    # 时间序列 
+    data = []
+    for i in range(len(data_i) - sequence_length):
+        data.append(data_i[i: i + sequence_length + 1])
+    reshaped_data = np.array(data).astype('float64')
+    
+    # 划分训练集和测试集9:1
+    np.random.shuffle(reshaped_data) # 数据样本打乱
+    x = reshaped_data[:, :-1]
+    y = reshaped_data[:, -1]
+    split = 0.9
+    split_boundary = int(reshaped_data.shape[0] * split)
+    train_x = x[:split_boundary] # 
+    test_x = x[split_boundary:]
+    train_y = y[:split_boundary]
+    test_y = y[split_boundary:]
+        
+    # 输入集维数调整成三维
+    train_x = np.reshape(train_x, (train_x.shape[0], train_x.shape[1], 1))
+    test_x = np.reshape(test_x, (test_x.shape[0], test_x.shape[1], 1))
+    
+    # 搭建LSTM模型
+    model = Sequential()
+    model.add(LSTM(32, input_dim=1, input_length=sequence_length, return_sequences=True)) 
+    # 前面数字太大过拟合，太小欠拟合，input_dim、input_length输入数据维度
+    model.add(Dropout(dropout)) # dropout数值越小越可能过拟合
+    model.add(LSTM(100,return_sequences=False)) # 隐藏层，过拟合可去掉一层LSTM
+    model.add(Dropout(dropout))
+    model.add(Dense(output_dim=1)) # 全连接层
+    model.add(Activation('relu')) #激活函数
+    model.compile(loss='mse', optimizer='rmsprop') # 损失函数、优化函数
+    
+    # 模型训练
+    model.fit(train_x,train_y,batch_size=2,nb_epoch=100,validation_split=0.05, verbose=2)#,shuffle=False
+    predict = model.predict(test_x)
+    
+    return model,predict,test_y
+
+# 绘制误差图函数
+def plot_results(predicted_data, true_data):
+    fig = plt.figure(facecolor='white')
+    ax = fig.add_subplot(111)
+    ax.plot(true_data, label='True Data')
+    plt.plot(predicted_data, label='Prediction')
+    plt.legend()
+    plt.show()
+
+## 向前预测函数
+def yuce_2020(model,data_i):
+    list_2020 = []
+    for i in range(4):
+        if i == 0:
+            x_i = np.array(data_i[-4:])
+        else:
+            x_i = list(data_i[-4+i:])
+            x_i = x_i+list_2020[-i:]
+            x_i = np.array(x_i)
+        x_i = np.reshape(x_i, (1, x_i.shape[0], 1))
+        list_2020.append(model.predict(x_i)[0][0])
+    return list_2020
+
+## 测试参数
+# 提取曲线
+#data_i = data0['北美整体规模'].loc['Q101':]
+#data_i.plot()
+# 训练
+#model,predict, test_y= LSTM_model(data_i,dropout=0.2)
+## 测试集误差图
+#plot_results(predict, test_y)
+## 预测
+#list_2020 = yuce_2020(model,data_i)
+
+## 整体训练&预测
+# 北美区域
+def beimei(data0):
+    data_2G = data0['2G北美规模'].loc['Q101':]
+    model,predict, test_y= LSTM_model(data_2G,dropout=0.5)
+    list_2G = yuce_2020(model,data_2G)
+    
+    data_3G = data0['3G北美规模'].loc['Q104':]
+    model,predict, test_y= LSTM_model(data_3G,dropout=0.2)
+    list_3G = yuce_2020(model,data_3G)
+    
+    data_3G_ = data0['3G北美规模'].loc['Q110':]
+    data_4G = data0['4G北美规模'].loc['Q410':]
+    model,predict, test_y= LSTM_model(data_3G_)
+    list_4G = yuce_2020(model,data_4G)
+    
+    # 先用3G模型预测5G再求整体
+    data_3G = data0['3G北美规模'].loc['Q104':'Q410']
+    model,predict, test_y= LSTM_model(data_3G,dropout=0.2)
+    data_5G = data0['5G北美规模'].loc['Q119':]
+    list_5G = yuce_2020(model,data_5G)
+    
+    list_all = []
+    for i in range(4):
+        x = list_5G[i]+list_4G[i]+list_3G[i]+list_2G[i]
+        list_all.append(x)
+        
+    return list_2G,list_3G,list_4G,list_all,list_5G
+
+# EMEA区域
+def EMEA(data0):
+    data_2G = data0['2G EMEA规模'].loc['Q101':]
+    model,predict, test_y= LSTM_model(data_2G,dropout=0.1)
+    list_2G = yuce_2020(model,data_2G)
+    
+    data_3G = data0['3G EMEA规模'].loc['Q302':]
+    model,predict, test_y= LSTM_model(data_3G)
+    list_3G = yuce_2020(model,data_3G)
+    
+    data_4G = data0['4G EMEA规模'].loc['Q410':]
+    model,predict, test_y= LSTM_model(data_4G)
+    list_4G = yuce_2020(model,data_4G)
+    
+    # 先用4G模型预测5G再求整体
+    data_5G = data0['5G EMEA规模'].loc['Q119':]
+    list_5G = yuce_2020(model,data_5G)
+    list_all = []
+    for i in range(4):
+        x = list_5G[i]+list_4G[i]+list_3G[i]+list_2G[i]
+        list_all.append(x)
+        
+    return list_2G,list_3G,list_4G,list_all,list_5G
+
+# 亚太区域
+def yatai(data0):
+    data_2G = data0['2G亚太规模'].loc['Q101':]
+    model,predict, test_y= LSTM_model(data_2G,dropout=0.5)
+    list_2G = yuce_2020(model,data_2G)
+    
+    data_3G = data0['3G亚太规模'].loc['Q101':]
+    model,predict, test_y= LSTM_model(data_3G,dropout=0.2)
+    list_3G = yuce_2020(model,data_3G)
+    
+    data_3G_ = data0['3G亚太规模'].loc['Q110':]
+    data_4G = data0['4G亚太规模'].loc['Q410':]
+    model,predict, test_y= LSTM_model(data_3G_,dropout=0.2)
+    list_4G = yuce_2020(model,data_4G)
+    
+    # 先用4G模型预测5G再求整体
+    data_4G = data0['4G亚太规模'].loc['Q410':'Q418']
+    model,predict, test_y= LSTM_model(data_4G)
+    data_5G = data0['5G亚太规模'].loc['Q119':]
+    list_5G = yuce_2020(model,data_5G)
+    list_all = []
+    for i in range(4):
+        x = list_5G[i]+list_4G[i]+list_3G[i]+list_2G[i]
+        list_all.append(x)
+        
+    return list_2G,list_3G,list_4G,list_all,list_5G
+
+# CALA区域
+def CALA(data0):
+    data_2G = data0['2G CALA规模'].loc['Q101':]
+    model,predict, test_y= LSTM_model(data_2G)
+    list_2G = yuce_2020(model,data_2G)
+    
+    data_3G = data0['3G CALA规模'].loc['Q107':]
+    model,predict, test_y= LSTM_model(data_3G)
+    list_3G = yuce_2020(model,data_3G)
+    
+    data_4G = data0['4G CALA规模'].loc['Q411':]
+    model,predict, test_y= LSTM_model(data_4G)
+    list_4G = yuce_2020(model,data_4G)
+    
+    # 先用4G模型预测5G再求整体
+    data_5G = data0['5G CALA规模'].loc['Q119':]
+    list_5G = yuce_2020(model,data_5G)
+    list_all = []
+    for i in range(4):
+        x = list_5G[i]+list_4G[i]+list_3G[i]+list_2G[i]
+        list_all.append(x)
+        
+    return list_2G,list_3G,list_4G,list_all,list_5G
+
+## 运行模型并输出结果至CSV文件
+Index = ['Q120','Q220','Q320','Q420']
+
+Beimei = np.array(beimei(data0)).T
+df_Beimei = pd.DataFrame(Beimei,index=Index,columns=data0.columns[:5])
+
+Yatai = np.array(yatai(data0)).T
+df_Yatai = pd.DataFrame(Yatai,index=Index,columns=data0.columns[10:15])
+
+emea = np.array(EMEA(data0)).T
+df_emea = pd.DataFrame(emea,index=Index,columns=data0.columns[5:10])
+
+cala = np.array(CALA(data0)).T
+df_cala = pd.DataFrame(cala,index=Index,columns=data0.columns[-5:])
+
+df = pd.concat([df_Beimei,df_emea,df_Yatai,df_cala],axis=1)
+df.to_csv(path+"model_1_result.csv",encoding='utf_8_sig')
+
+#if __name__ == '__main__':
+#    pass
